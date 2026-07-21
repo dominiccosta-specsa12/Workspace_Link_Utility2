@@ -28,25 +28,19 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 print(f"[+] Data length: {len(received_data)} bytes")
                 
                 # Intentar reenviar al webhook externo vía POST
-                print(f"[+] Attempting to forward to https://127.0.0.1:7776/decoder...")
+                print(f"[+] Attempting to forward to http://127.0.0.1:7776/decoder...")
                 
                 try:
                     # Preparar datos para POST
                     post_data = json.dumps({"id": received_data}).encode('utf-8')
                     req = urllib.request.Request(
-                        'https://127.0.0.1:7776/decoder',
+                        'http://127.0.0.1:7776/decoder',
                         data=post_data,
                         headers={'Content-Type': 'application/json'},
                         method='POST'
                     )
                     
-                    # Desactivar verificación SSL
-                    import ssl
-                    ssl_context = ssl.create_default_context()
-                    ssl_context.check_hostname = False
-                    ssl_context.verify_mode = ssl.CERT_NONE
-                    
-                    response = urllib.request.urlopen(req, context=ssl_context, timeout=10)
+                    response = urllib.request.urlopen(req, timeout=10)
                     print(f"[+] External webhook SUCCESS: {response.status}")
                     response_body = response.read().decode('utf-8', errors='replace')
                     if response_body:
@@ -54,15 +48,12 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     data_sent_successfully = True
                 except Exception as external_error:
                     print(f"[!] External webhook FAILED: {external_error}")
-                    print(f"[*] Trying alternative: GET with chunked data...")
+                    print(f"[*] Trying alternative: GET request...")
                     
-                    # Intentar vía GET con URL directa
+                    # Intentar vía GET
                     try:
-                        external_url = f"https://127.0.0.1:7776/decoder?id={received_data}"
-                        ssl_context = ssl.create_default_context()
-                        ssl_context.check_hostname = False
-                        ssl_context.verify_mode = ssl.CERT_NONE
-                        response = urllib.request.urlopen(external_url, context=ssl_context, timeout=10)
+                        external_url = f"http://127.0.0.1:7776/decoder?id={received_data}"
+                        response = urllib.request.urlopen(external_url, timeout=10)
                         print(f"[+] GET request SUCCESS: {response.status}")
                         data_sent_successfully = True
                     except Exception as get_error:
