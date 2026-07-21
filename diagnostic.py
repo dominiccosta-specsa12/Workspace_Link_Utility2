@@ -65,5 +65,3 @@ if __name__ == "__main__":
     else:
         print("Verification terminated with exit code 1.")
         sys.exit(1)
-
-# Updated: Chrome navigate() required for secure execution
