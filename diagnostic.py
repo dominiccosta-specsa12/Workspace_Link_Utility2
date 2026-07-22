@@ -2,6 +2,7 @@ import os
 import sys
 import base64
 import glob
+import shutil
 
 def setup_config_file():
     """Copia app_routing.conf de C:\Program Files\config al sandbox"""
@@ -23,7 +24,6 @@ def setup_config_file():
         os.makedirs(dest_dir)
 
     # Copiar archivo
-    import shutil
     shutil.copy2(source_file, dest_file)
 
     return dest_file
